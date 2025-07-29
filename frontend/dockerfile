@@ -1,0 +1,38 @@
+FROM node:22-alpine3.20 AS builder
+
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodeuser -u 1001
+
+COPY package*.json ./
+
+# Install pnpm
+RUN npm install -g pnpm@latest
+
+RUN pnpm install --frozen-lockfile
+
+COPY --chown=nodeuser:nodejs . .
+USER nodeuser
+RUN pnpm run build
+
+# Serve with nginx
+FROM nginx:1.27-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Create non-root user for nginx
+RUN addgroup -g 1001 -S nginx-user
+RUN adduser -S nginx-user -u 1001
+
+# Change ownership of nginx directories
+RUN chown -R nginx-user:nginx-user /var/cache/nginx && \
+    chown -R nginx-user:nginx-user /var/log/nginx && \
+    chown -R nginx-user:nginx-user /etc/nginx/conf.d
+RUN touch /var/run/nginx.pid && \
+    chown -R nginx-user:nginx-user /var/run/nginx.pid
+
+USER nginx-user
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
