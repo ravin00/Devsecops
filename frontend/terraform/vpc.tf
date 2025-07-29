@@ -1,37 +1,41 @@
 # Virtual private cloud
 resource "aws_vpc" "myapp-vpc" {
-    cidr_block = var.vpc_cidr
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
-    tags = {
-      Name = "Project VPC"
-    }
+  tags = {
+    Name = "Project VPC"
+  }
 }
 
 
 # Public subnet
 resource "aws_subnet" "public_subnets" {
-  count = length(var.public_subnet_cidrs)
-  vpc_id = aws_vpc.myapp-vpc.id
-  cidr_block = element(var.public_subnet_cidrs, count.index)
-  availability_zone = element(var.azs, count.index)
+  count                   = length(var.public_subnet_cidrs)
+  vpc_id                  = aws_vpc.myapp-vpc.id
+  cidr_block              = var.public_subnet_cidrs[count.index]
+  availability_zone       = var.azs[count.index]
   map_public_ip_on_launch = true
 
   tags = {
-    Name: "my-three-tier-app-public-subnet  ${count.index + 1}"
+    Name = "my-three-tier-app-public-subnet-${count.index + 1}"
+    Type = "Public"
   }
 }
 
+
 # private subnet
 resource "aws_subnet" "private_subnets" {
-  count = length(var.private_subnet_cidrs)
-  vpc_id = aws_vpc.myapp-vpc.id
-  cidr_block = element(var.private_subnet_cidrs, count.index)
+  count             = length(var.private_subnet_cidrs)
+  vpc_id            = aws_vpc.myapp-vpc.id
+  cidr_block        = element(var.private_subnet_cidrs, count.index)
   availability_zone = element(var.azs, count.index)
 
   tags = {
-    Name: "my-three-tier-app-private-subnet-${count.index + 1}"
+    Name : "my-three-tier-app-private-subnet-${count.index + 1}"
   }
-  
+
 }
 
 # Internet Gateway
@@ -44,7 +48,7 @@ resource "aws_internet_gateway" "igw" {
 }
 
 # Route Table for public subnet
-resource "aws_route_table" "public-rtb"{
+resource "aws_route_table" "public-rtb" {
   vpc_id = aws_vpc.myapp-vpc.id
   route {
     cidr_block = "0.0.0.0/0"
@@ -55,11 +59,11 @@ resource "aws_route_table" "public-rtb"{
     Name = "public-rtb"
   }
 }
-  
+
 # Associating the public subnet with the route table that has IGW
 resource "aws_route_table_association" "public-subnet-association" {
-  count = length(var.public_subnet_cidrs)
-  subnet_id = element(aws_subnet.public_subnets[*].id, count.index)
+  count          = length(var.public_subnet_cidrs)
+  subnet_id      = element(aws_subnet.public_subnets[*].id, count.index)
   route_table_id = aws_route_table.public-rtb.id
 }
 
@@ -74,9 +78,9 @@ resource "aws_eip" "nat" {
 
 #  NAT Gateway in Public Subnet 1
 resource "aws_nat_gateway" "nat" {
-  count = 1
+  count         = 1
   allocation_id = aws_eip.nat.id
-  subnet_id  = element(aws_subnet.public_subnets[*].id, count.index)
+  subnet_id     = element(aws_subnet.public_subnets[*].id, count.index)
   tags = {
     Name = "main-nat-${count.index + 1}"
   }
@@ -86,10 +90,10 @@ resource "aws_nat_gateway" "nat" {
 
 # Private Route Table
 resource "aws_route_table" "private-rtb" {
-  count = length(aws_nat_gateway.nat)
+  count  = length(aws_nat_gateway.nat)
   vpc_id = aws_vpc.myapp-vpc.id
-  route  {
-    cidr_block = "0.0.0.0/0"
+  route {
+    cidr_block     = "0.0.0.0/0"
     nat_gateway_id = element(aws_nat_gateway.nat[*].id, count.index)
   }
 
@@ -100,7 +104,7 @@ resource "aws_route_table" "private-rtb" {
 
 # Private Route Table Associations
 resource "aws_route_table_association" "private-subnet-association" {
-  count = length(var.private_subnet_cidrs)
-  subnet_id = element(aws_subnet.private_subnets[*].id, count.index)
+  count          = length(var.private_subnet_cidrs)
+  subnet_id      = element(aws_subnet.private_subnets[*].id, count.index)
   route_table_id = element(aws_route_table.private-rtb[*].id, count.index)
 }

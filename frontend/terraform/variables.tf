@@ -1,20 +1,26 @@
 variable vpc_cidr {}
 variable aws_region {}
 
-variable "public_subnet_cidr" {
-    type = list(string)
-    description = "Public subnet CIDR values"
-    default = ["10.0.10.0/24", "10.0.20.0/24"]
+variable "public_subnet_cidrs" {
+  type        = list(string)
+  description = "CIDR blocks for public subnets"
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
 variable "private_subnet_cidrs" {
-    type = list(string)
-    description = "Prvivate Subnet CIDR values"
-    default = [ "10.0.40.0/24", "10.0.50.0/24"]
+  type        = list(string)
+  description = "CIDR blocks for private subnets"
+  default     = ["10.0.3.0/24", "10.0.4.0/24"]
+}
+
+variable "vpc_cidr" {
+  type        = string
+  description = "CIDR block for VPC"
+  default     = "10.0.0.0/16"
 }
 
 variable "azs" {
-    type = list(string)
-    description = "Availablility Zones"
-    default = [ "us-east-1a", "us-east-1b","us-east-1c"]
+  type        = list(string)
+  description = "Availability zones"
+  default     = ["us-west-2a", "us-west-2b"]
 }
